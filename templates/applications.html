@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}CyberGuard Pro - Installed Services{% endblock %}
+
+{% block content %}
+<section id="services">
+    <h2>Installed Services</h2>
+    
+    <div class="selecter-cls">
+        <div class="agent-selector" id="agent-selection">
+            <label for="agent-select">Select Agent:</label>
+            <select id="agent-select">
+                <option value="">Select an agent</option>
+                <!-- Agents will be populated here by JavaScript -->
+            </select>
+            <button id="select-agent-btn" class="btn">Select Agent</button>
+        </div>
+    </div>
+
+    <div id="agent-info">
+        <p>Selected Agent: <span id="selected-agent-name">None</span></p>
+    </div>
+    
+    <div class="controls">
+        <button id="refresh-data-btn" class="btn">Refresh Data</button>
+        <input type="text" id="service-search" placeholder="Search services...">
+        <select id="category-filter">
+            <option value="">All Categories</option>
+            <!-- Categories will be populated here by JavaScript -->
+        </select>
+    </div>
+
+    <div class="table-container">
+        <table id="services-table">
+            <thead>
+                <tr>
+                    <th>Unit</th>
+                    <th>Description</th>
+                    <th>Load</th>
+                    <th>Active</th>
+                    <th>Sub</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Services will be populated here by JavaScript -->
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pagination">
+        <button id="prev-page" class="btn">Previous</button>
+        <span id="page-info">Page <span id="current-page">1</span> of <span id="total-pages">1</span></span>
+        <button id="next-page" class="btn">Next</button>
+    </div>
+</section>
+
+<div id="service-modal" class="modal">
+    <div class="modal-content">
+        <h3>Service Information</h3>
+        <p id="service-message"></p>
+        <button id="close-service-modal" class="btn">Close</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/services.js') }}"></script>
+{% endblock %}

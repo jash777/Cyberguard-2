@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+
+{% block title %}CyberGuard Pro - Firewall Rules{% endblock %}
+
+{% block content %}
+
+{% block extra_css %}
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+<style>
+    .error-toast { background-color: #ff6b6b; }
+    .success-toast { background-color: #51cf66; }
+    .warning-toast { background-color: #fcc419; }
+</style>
+{% endblock %}
+
+<section id="firewall">
+    <h2>Firewall Rules (iptables)</h2>
+    <div class="agent-selector">
+        <label for="agent-select">Select Agent:</label>
+        <select id="agent-select">
+            <option value="">Select an agent</option>
+            {% for agent in agents %}
+                <option value="{{ agent.id }}" {% if agent.id == selected_agent_id %}selected{% endif %}>
+                    {{ agent.name }} ({{ agent.ip_address }})
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+    
+    <div class="button-group">
+        <button id="add-rule-btn" class="btn">Add New Rule</button>
+        <button id="block-port-btn" class="btn">Block Port</button>
+        <button id="refresh-rules-btn" class="btn">Refresh Rules</button>
+    </div>
+    
+    <div class="table-container">
+        <table id="firewall-table">
+            <thead>
+                <tr>
+                    <th>Table</th>
+                    <th>Chain</th>
+                    <th>Protocol</th>
+                    <th>Source</th>
+                    <th>Destination</th>
+                    <th>Target</th>
+                    <th>Details</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rules will be dynamically populated here -->
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- Add Rule Modal -->
+<div id="add-rule-modal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h3>Add Firewall Rule (iptables)</h3>
+        <form id="add-rule-form">
+            <select id="rule-table" required>
+                <option value="filter">filter</option>
+                <option value="nat">nat</option>
+                <option value="mangle">mangle</option>
+                <option value="raw">raw</option>
+            </select>
+            <select id="rule-chain" required>
+                <option value="INPUT">INPUT</option>
+                <option value="OUTPUT">OUTPUT</option>
+                <option value="FORWARD">FORWARD</option>
+                <option value="PREROUTING">PREROUTING</option>
+                <option value="POSTROUTING">POSTROUTING</option>
+            </select>
+            <input type="text" id="rule-protocol" placeholder="Protocol (e.g., tcp, udp, icmp)" required>
+            <input type="text" id="rule-source" placeholder="Source IP">
+            <input type="text" id="rule-destination" placeholder="Destination IP">
+            <input type="text" id="rule-target" placeholder="Target (e.g., ACCEPT, DROP)" required>
+            <input type="text" id="rule-extra" placeholder="Extra details (e.g., --dport 80)">
+            <button type="submit" class="btn">Add Rule</button>
+        </form>
+    </div>
+</div>
+
+<!-- Block Port Modal -->
+<div id="block-port-modal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h3>Block Port</h3>
+        <form id="block-port-form">
+            <input type="number" id="port-to-block" placeholder="Enter port number" required min="1" max="65535">
+            <button type="submit" class="btn btn-danger">Block Port</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+<script>
+    
+document.addEventListener('DOMContentLoaded', function() {
+    const agentSelect = document.getElementById('agent-select');
+    const addRuleBtn = document.getElementById('add-rule-btn');
+    const blockPortBtn = document.getElementById('block-port-btn');
+    const refreshRulesBtn = document.getElementById('refresh-rules-btn');
+    const addRuleModal = document.getElementById('add-rule-modal');
+    const blockPortModal = document.getElementById('block-port-modal');
+    const addRuleForm = document.getElementById('add-rule-form');
+    const blockPortForm = document.getElementById('block-port-form');
+
+    // Event listeners
+    agentSelect.addEventListener('change', handleAgentSelection);
+    addRuleBtn.addEventListener('click', () => toggleModal(addRuleModal, true));
+    blockPortBtn.addEventListener('click', () => toggleModal(blockPortModal, true));
+    refreshRulesBtn.addEventListener('click', loadFirewallRules);
+    addRuleForm.addEventListener('submit', handleAddRule);
+    blockPortForm.addEventListener('submit', handleBlockPort);
+
+    // Close modals when clicking outside
+    window.addEventListener('click', (event) => {
+        if (event.target.classList.contains('modal')) {
+            toggleModal(event.target, false);
+        }
+    });
+
+    // Close buttons for modals
+    document.querySelectorAll('.close').forEach(closeBtn => {
+        closeBtn.addEventListener('click', () => toggleModal(closeBtn.closest('.modal'), false));
+    });
+
+    // Initial load
+    loadFirewallRules();
+
+    function handleAgentSelection() {
+        const selectedAgentId = this.value;
+        if (selectedAgentId) {
+            fetch('/select_agent/' + selectedAgentId, {
+                method: 'POST',
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message === 'Agent selected successfully') {
+                    loadFirewallRules();
+                } else {
+                    showNotification('Failed to select agent', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Error selecting agent', 'error');
+            });
+        }
+    }
+
+    function loadFirewallRules() {
+        fetch('/api/firewall_rules')
+            .then(response => response.json())
+            .then(data => {
+                const tableBody = document.querySelector('#firewall-table tbody');
+                tableBody.innerHTML = '';
+                for (const [table, chains] of Object.entries(data)) {
+                    for (const [chain, chainData] of Object.entries(chains)) {
+                        chainData.rules.forEach(rule => {
+                            const row = createRuleRow(table, chain, rule);
+                            tableBody.appendChild(row);
+                        });
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error loading firewall rules:', error);
+                showNotification('Error loading firewall rules', 'error');
+            });
+    }
+
+    function createRuleRow(table, chain, rule) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${escapeHtml(table)}</td>
+            <td>${escapeHtml(chain)}</td>
+            <td>${escapeHtml(rule.protocol || '-')}</td>
+            <td>${escapeHtml(rule.src || '-')}</td>
+            <td>${escapeHtml(rule.dst || '-')}</td>
+            <td>${escapeHtml(rule.target || '-')}</td>
+            <td>${escapeHtml(rule.matches.map(m => `${m.name}${m.dport ? `:${m.dport}` : ''}`).join(', ') || '-')}</td>
+            <td>
+                <button class="btn btn-small btn-danger" data-action="remove" 
+                    data-table="${escapeHtml(table)}" 
+                    data-chain="${escapeHtml(chain)}" 
+                    data-protocol="${escapeHtml(rule.protocol)}" 
+                    data-src="${escapeHtml(rule.src)}" 
+                    data-dst="${escapeHtml(rule.dst)}" 
+                    data-target="${escapeHtml(rule.target)}">Remove</button>
+            </td>
+        `;
+        row.querySelector('button[data-action="remove"]').addEventListener('click', handleRemoveRule);
+        return row;
+    }
+
+    function handleAddRule(e) {
+        e.preventDefault();
+        const formData = new FormData(addRuleForm);
+        const rule = Object.fromEntries(formData.entries());
+
+        fetch('/api/firewall_rules', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(rule),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showNotification('Firewall rule added successfully', 'success');
+                loadFirewallRules();
+                toggleModal(addRuleModal, false);
+                addRuleForm.reset();
+            } else {
+                showNotification('Failed to add firewall rule: ' + data.message, 'error');
+            }
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+            showNotification('Error adding firewall rule', 'error');
+        });
+    }
+
+    function handleBlockPort(e) {
+        e.preventDefault();
+        const port = document.getElementById('port-to-block').value;
+
+        fetch('/api/block_port', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ port: parseInt(port) }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showNotification(data.message, 'success');
+                loadFirewallRules();
+                toggleModal(blockPortModal, false);
+                blockPortForm.reset();
+            } else {
+                showNotification('Failed to block port: ' + data.message, 'error');
+            }
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+            showNotification('Error blocking port', 'error');
+        });
+    }
+
+    function handleRemoveRule(e) {
+        const button = e.target;
+        const { table, chain, protocol, src, dst, target } = button.dataset;
+
+        if (confirm('Are you sure you want to remove this firewall rule?')) {
+            fetch('/api/firewall_rules', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ table, chain, protocol, src, dst, target }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showNotification('Firewall rule removed successfully', 'success');
+                    loadFirewallRules();
+                } else {
+                    showNotification('Failed to remove firewall rule: ' + data.message, 'error');
+                }
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                showNotification('Error removing firewall rule', 'error');
+            });
+        }
+    }
+
+    function toggleModal(modal, show) {
+        modal.style.display = show ? 'block' : 'none';
+    }
+
+    function showNotification(message, type) {
+        // Implement a notification system (e.g., toast notifications)
+        alert(`${type.toUpperCase()}: ${message}`);
+    }
+
+    function escapeHtml(unsafe) {
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+});
+</script>
+{% endblock %}

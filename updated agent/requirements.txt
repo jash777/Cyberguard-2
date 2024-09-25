@@ -1,0 +1,34 @@
+# Flask and related packages
+Flask
+Flask-SocketIO
+
+# Networking and system information
+python-iptables
+psutil
+
+# Cryptography (for password hashing)
+bcrypt
+
+# Concurrent programming
+eventlet
+
+# HTTP client (for potential future use)
+requests
+
+# Type checking (optional, but recommended for development)
+mypy
+
+# Testing (optional, but recommended for development)
+pytest
+
+# Logging (already part of Python standard library, but specified for clarity)
+logging
+
+# JSON handling (already part of Python standard library, but specified for clarity)
+json
+
+# Operating system interfaces (already part of Python standard library, but specified for clarity)
+os-sys
+
+# Regular expressions (already part of Python standard library, but specified for clarity)
+regex

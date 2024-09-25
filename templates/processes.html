@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}CyberGuard Pro - Processes{% endblock %}
+
+{% block content %}
+<div id="alert-container" style="position: fixed; top: 20px; right: 20px; z-index: 1000;"></div>
+
+<section id="processes">
+    
+    <h2>Running Processes</h2>
+    
+    {% if error %}
+    <div id="error-message" style="display: none;">{{ error }}</div>
+    {% endif %}
+    
+    <div class="agent-selector">
+        <select id="agent-select">
+            <option value="">Select an agent</option>
+        </select>
+        
+        <button id="select-agent-btn" class="btn">Select Agent</button>
+        <button id="refresh-data-btn" class="btn">Refresh Data</button>
+    </div>
+    
+    <div class="table-container">
+        <table id="processes-table">
+            <thead>
+                <tr>
+                    <th>PID</th>
+                    <th>Name</th>
+                    <th>User</th>
+                    <th>CPU %</th>
+                    <th>Memory %</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/processes.js') }}"></script>
+{% endblock %}
