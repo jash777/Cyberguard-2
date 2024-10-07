@@ -22,8 +22,8 @@ A centralized dashboard for comprehensive server management, including firewall 
 ## Installation
 
 ```bash
-git clone https://github.com/yourusername/server-management-dashboard.git
-cd server-management-dashboard
+git clone [ https://github.com/yourusername/server-management-dashboard.git](https://github.com/jash777/Cyberguard-2)
+cd cybergaurdpro
 pip install -r requirements.txt
 ```
 
@@ -36,7 +36,7 @@ pip install -r requirements.txt
 python app.py
 ```
 
-3. Access the web interface at `http://localhost:5000`.
+3. Access the web interface at `http://localhost:5001`.
 
 ## Configuration
 
